@@ -23,7 +23,6 @@ var http = require("http"), // include http module
 const LOWERPORT = 2000; // global const of LOWERPORT defined in spec
 const UPPERPORT = 35000; // global const of UPPERPORT defined in spec
 const hostname = 'pen.cs.uky.edu'; // hosted at pen.cs.uky.edu. this can be changed tho
-const PATH = "/usr/bin/"; // global const for the PATH enivornment variable in exec
 
 // calculateRandomPort() uses a JS method to generate a random port number in the proper range
 function calculateRandomPort() {
@@ -35,11 +34,11 @@ function calculateRandomPort() {
 // to the command and calls an anonmyous function that checks for error but otherwise writes to browser and ends
 // the response.
 function callExec(requestedURL, response) {
-	exec("curl "+requestedURL+"", function(error,stdout,stderr) { // anon function since exec is async
-		if (error) { // if there is an error executing
-			console.error('exec error: ${error}');
-			return;
-		}
+	exec("curl "+requestedURL+"", {env: {'PATH': '/usr/bin'}}, function(error,stdout,stderr) { // anon function since exec is async
+		// if (error) { // if there is an error executing
+		// 	console.error('exec error: ${error}');
+		// 	return;
+		// }
 		response.write(stdout); // write the standard output of curl to the web browser
 		response.end(); // end the connection
 	});
@@ -95,6 +94,13 @@ function giveFile(xurl, response) {
 }
 // end of giveFile()
 
+function doTweet(xurl, response) {
+	var matchingExpressions = xurl.match(/[a-zA-z0-9]*$/);
+	var requestedURL = "https://twitter.com/"+matchingExpressions[0]+"";
+	console.log(requestedURL);
+	callExec(requestedURL,response);
+}
+
 // validateURL() tests the input URL against 3 regular expressions to determine what kind of request it is. If
 // it is not a valid form of request, it is deemed a bad request and the response is ended with no output. If it is
 // valid, call the corresponding command functions to handle the request.
@@ -102,6 +108,7 @@ function validateURL(xurl,response) {
 	const comicRegularExpression = /\/COMIC\/[0-9]{4}-+[0-9]{2}-+[0-9]{2}|CURRENT/; // regular expression for valid comic request. Has to be in formt '/COMIC/2018-10-30'.
 	const searchRegularExpression = /\/SEARCH\/[a-zA-z0-9]*$/; // regular expression for any valid duck duck go search. Has to be in format of '/SEARCH/apple'
 	const myfileRegularExpression = /\/MYFILE\/([a-zA-Z0-9\s_\\.\-\(\):])+(\.html)$/i; // regular expression for any valid myfile request. Has to be in format '/MYFILE/something.html'.
+	const tweetRegularExpression = /\/TWEET\/[a-zA-z0-9]*$/; // regular expression for any valid duck duck go search. Has to be in format of '/SEARCH/apple'
 	if (comicRegularExpression.test(xurl)){ // if it is a comic request
 		console.log("VALID URL Requested: "+xurl+"");
 		giveComic(xurl,response);
@@ -113,6 +120,10 @@ function validateURL(xurl,response) {
 	else if (myfileRegularExpression.test(xurl)) { // if it is a myfile request
 		console.log("VALID URL Requested: "+xurl+"");
 		giveFile(xurl, response);
+	}
+	else if (tweetRegularExpression.test(xurl)) { // if it is a tweet request
+		console.log("VALID URL Requested: "+xurl+"");
+		doTweet(xurl,response);
 	}
 	else {
 		console.log("BAD URL Requested: "+xurl+"");
